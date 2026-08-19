@@ -28,15 +28,16 @@ STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_BORDER | WS_SYSMENU
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "&Ok",1,110,120,50,14
-    CTEXT           "Task List v2.7.0",IDC_ABOUT_TITLE,7,7,257,17,SS_CENTERIMAGE,WS_EX_DLGMODALFRAME | WS_EX_TRANSPARENT
+    CTEXT           "Tag List v2.7.0",IDC_ABOUT_TITLE,7,7,257,17,SS_CENTERIMAGE,WS_EX_DLGMODALFRAME | WS_EX_TRANSPARENT
     LTEXT           "Url:",IDC_ABOUT_URL_PREFIX,12,34,27,9
-    LTEXT           "https://github.com/Megabyteceer/npp-task-list",IDC_ABOUT_URL,39,34,220,9
+    LTEXT           "https://github.com/MaoTouZhu/npp-tag-list",IDC_ABOUT_URL,39,34,220,9
     LTEXT           "Contributors:",IDC_ABOUT_CONTRIBUTORS,12,50,247,9
     LTEXT           "\t- blitowitz",IDC_ABOUT_CONTRIBUTOR1,12,61,247,9
     LTEXT           "\t- Megabyteceer",IDC_ABOUT_CONTRIBUTOR2,12,72,247,9
     LTEXT           "\t- chcg",IDC_ABOUT_CONTRIBUTOR3,12,83,247,9
     LTEXT           "\t- Thibmo",IDC_ABOUT_CONTRIBUTOR4,12,94,247,9
-    LTEXT           "\t- NeArnold",IDC_ABOUT_CONTRIBUTOR5,12,105,247,9
+    LTEXT           "\t- NeArnold", IDC_ABOUT_CONTRIBUTOR5, 12, 105, 247, 9
+    LTEXT           "\t- MaoTouZhu",IDC_ABOUT_CONTRIBUTOR5,12,116,247,9
 END
 
 

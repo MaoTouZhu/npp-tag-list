@@ -16,7 +16,7 @@ intptr_t CALLBACK AboutDialog::run_dlgProc(UINT message, WPARAM wParam, LPARAM /
 	case WM_INITDIALOG:
 		{
 			_urlNppPlugin.init(_hInst, _hSelf);
-			_urlNppPlugin.create(::GetDlgItem(_hSelf, IDC_ABOUT_URL), TEXT("https://github.com/Megabyteceer/npp-task-list"));
+			_urlNppPlugin.create(::GetDlgItem(_hSelf, IDC_ABOUT_URL), TEXT("https://github.com/MaoTouZhu/npp-tag-list"));
 
 			return TRUE;
 		}
