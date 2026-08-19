@@ -80,7 +80,10 @@ public :
 		//add list items LB_ADDSTRING
 		for (const auto &it : items)
 		{
-			::SendMessage( _hList, LB_ADDSTRING, NULL, (LPARAM)converterX.from_bytes(it.text).c_str());
+		{
+			std::wstring w = converterX.from_bytes(it.text);
+			::SendMessage( _hList, LB_ADDSTRING, NULL, (LPARAM)w.c_str());
+		}
 			todoItems.push_back(it);
 		}
 	};

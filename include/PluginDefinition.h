@@ -29,9 +29,9 @@
 // Here define your plugin name
 //
 #ifndef _DEBUG
-const TCHAR NPP_PLUGIN_NAME[] = TEXT("Task List");
+const TCHAR NPP_PLUGIN_NAME[] = TEXT("Tag List");
 #else
-const TCHAR NPP_PLUGIN_NAME[] = TEXT("Task List Debug");
+const TCHAR NPP_PLUGIN_NAME[] = TEXT("Tag List Debug");
 #endif
 
 //-----------------------------------------------//
@@ -40,7 +40,7 @@ const TCHAR NPP_PLUGIN_NAME[] = TEXT("Task List Debug");
 //
 // Here define the number of your plugin commands
 //
-const int nbFunc = 3;
+const int nbFunc = 4;
 
 
 //
@@ -76,6 +76,7 @@ bool setCommand(size_t index, TCHAR *cmdName, PFUNCPLUGINCMD pFunc, ShortcutKey 
 //
 void displayDialog();
 void displayAboutDialog();
+void editConfigFile();
 
 // Helper functions
 

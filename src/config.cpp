@@ -12,8 +12,8 @@ const char *k_config_value_strings[k_config_value_count]=
 	"keywords=",
 };
 
-char default_config_v1[]= "version=\n1\n\nkeywords=\nTODO:";
 #define default_config default_config_v1
+char default_config_v1[]= "version=\n1\n\nkeywords=\n^\\s*TODO:\n^\\s*BUG:\n^\\s*FIX:\n^\\s*REFACTOR:\n^\\s*DONE:\n^\\s*INFO:";
 const int k_current_version= 1;
 
 const char *k_config_file_path="./plugins/NppTaskList/config/npp_task_list.cfg";

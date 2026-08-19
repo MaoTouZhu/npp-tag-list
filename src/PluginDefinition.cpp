@@ -20,6 +20,9 @@
 #include "assert.h"
 
 #include <list>
+#include <string>
+#include <regex>
+#include <cstddef>
 #include "TaskListDlg.h"
 #include "AboutDialog\AboutDlg.h"
 #include "config.h"
@@ -103,9 +106,10 @@ void commandMenuInit(NppData aNppData)
     //            ShortcutKey *shortcut,          // optional. Define a shortcut to trigger this command
     //            bool check0nInit                // optional. Make this menu item be checked visually
     //            );
-	setCommand(0, TEXT("Show Task List"), &displayDialog, NULL, false);
-	setCommand(1, TEXT("Reload Task List Configuration"), &reload_config_file, NULL, false);
-	setCommand(2, TEXT("About Task List"), &displayAboutDialog, NULL, false);
+	setCommand(0, TEXT("Show Tag List"), &displayDialog, NULL, false);
+	setCommand(1, TEXT("Reload Tag List Configuration"), &reload_config_file, NULL, false);
+	setCommand(2, TEXT("About Tag List"), &displayAboutDialog, NULL, false);
+	setCommand(3, TEXT("Edit Tag List Configuration"), &editConfigFile, NULL, false);
 	displayDialog();
 }
 
@@ -190,50 +194,110 @@ VOID CALLBACK MyTimerProc(
 
 	int keyword_count;
 	const char * const *keywords= get_keyword_list(&keyword_count);
-	char search_pattern_1[k_max_keyword_length+16]; // + 16 for extra space for regex search strings and \0
-	char search_pattern_2[k_max_keyword_length+16]; // + 16 for extra space for regex search strings and \0
+
+	// Read entire document into a string for regex scanning
+	Sci_TextRange fullRange{};
+	fullRange.chrg.cpMin = 0;
+	fullRange.chrg.cpMax = static_cast<Sci_PositionCR>(length);
+	fullRange.lpstrText = new char[length + 1];
+	::SendMessage(curScintilla, SCI_GETTEXTRANGE, 0, (LPARAM)&fullRange);
+	std::string docText(fullRange.lpstrText, static_cast<size_t>(length));
+	delete[] fullRange.lpstrText;
+
+	// All keywords are treated as regular expressions. No automatic escaping or "re:/.../" markers.
 
 	for (int keyword_index= 0; keyword_index<keyword_count; keyword_index++)
 	{
-		const char *keyword= keywords[keyword_index];
+		const char *keyword_c = keywords[keyword_index];
+		assert(strlen(keyword_c) < k_max_keyword_length);
+		std::string keyword(keyword_c);
 
-		assert(strlen(keyword) < k_max_keyword_length);
+		// Treat keyword directly as a regular expression pattern
+		std::string pattern = keyword;
 
-		//sprintf(search_pattern_1, "^.*%s.*$", keyword);
-		sprintf(search_pattern_1, keyword);
-		//sprintf(search_pattern_2, "%s.*$", keyword);
-		sprintf(search_pattern_2, ".*$");
+		try {
+			std::regex re(pattern);
 
-		Sci_TextToFind search{};
-		search.lpstrText = search_pattern_1;
-		search.chrg.cpMin = 0;
-		search.chrg.cpMax = static_cast<Sci_PositionCR>( length );
-		Sci_PositionCR len = 0;
-		Sci_TextRange result{};
-		TodoItem item{};
-		item.hScintilla = curScintilla;
+			// perform per-line matching so ^/$ match line boundaries
+			size_t docPos = 0;
+			const size_t docSize = docText.size();
+			while (docPos < docSize) {
+				size_t newlinePos = docText.find('\n', docPos);
+				size_t lineLen = (newlinePos == std::string::npos) ? (docSize - docPos) : (newlinePos - docPos);
+				// handle optional CR before LF (\r\n)
+				if (lineLen > 0 && docText[docPos + lineLen - 1] == '\r') {
+					--lineLen;
+				}
 
-		while( ::SendMessage(curScintilla, SCI_FINDTEXT, SCFIND_MATCHCASE | SCFIND_WHOLEWORD, (LPARAM)&search) > -1 )
-		{
-			//narrow down text to what we actually want
-			search.lpstrText = search_pattern_2;
-			search.chrg.cpMin = search.chrgText.cpMin;
-			::SendMessage(curScintilla, SCI_FINDTEXT, SCFIND_REGEXP, (LPARAM)&search);
-			//get text and add it to list
-			len = (search.chrgText.cpMax - search.chrgText.cpMin) + 1; //+1 for \0
-			result.chrg = search.chrgText;
-			result.lpstrText = new char[len];
-			::SendMessage(curScintilla, SCI_GETTEXTRANGE, NULL, (LPARAM)&result);
-			//get meta-data to include with text: scintilla handle, text start/end
-			item.text = result.lpstrText;
-			item.startPosition = search.chrgText.cpMin;
-			item.endPosition = search.chrgText.cpMax;
-			todos.push_back(item);
+				std::string line = docText.substr(docPos, lineLen);
 
-			//restore search pattern
-			search.lpstrText = search_pattern_1;
-			//advance search position
-			search.chrg.cpMin = search.chrgText.cpMax + 1;
+				for (std::sregex_iterator it(line.begin(), line.end(), re), end; it != end; ++it) {
+					std::smatch m = *it;
+					size_t matchPos = static_cast<size_t>(m.position());
+					size_t lenm = static_cast<size_t>(m.length());
+					size_t globalPos = docPos + matchPos;
+
+					TodoItem item{};
+					item.hScintilla = curScintilla;
+
+					if (m.size() > 1) {
+						// There are capture groups. Show only the concatenation of group matches.
+						// Compute display text and compute start/end as span from first group's start to last group's end.
+						std::string display;
+						size_t firstGlobal = SIZE_MAX;
+						size_t lastGlobalEnd = 0;
+
+						for (size_t gi = 1; gi < m.size(); ++gi) {
+							std::ssub_match g = m[gi];
+							if (!g.matched)
+								continue;
+							size_t gpos = static_cast<size_t>(g.first - line.begin());
+							size_t glen = static_cast<size_t>(g.second - g.first);
+							size_t gGlobalPos = docPos + gpos;
+							if (firstGlobal == SIZE_MAX) firstGlobal = gGlobalPos;
+							if (gGlobalPos + glen > lastGlobalEnd) lastGlobalEnd = gGlobalPos + glen;
+
+							if (!display.empty())
+								display.push_back(' ');
+							display.append(g.first, g.second);
+						}
+
+						if (firstGlobal == SIZE_MAX) {
+							// No groups matched (shouldn't happen), fallback to full match
+							item.startPosition = static_cast<Sci_PositionCR>(globalPos);
+							item.endPosition = static_cast<Sci_PositionCR>(globalPos + lenm);
+							item.text = new char[lenm + 1];
+							memcpy(item.text, docText.data() + globalPos, lenm);
+							item.text[lenm] = '\0';
+						} else {
+							item.startPosition = static_cast<Sci_PositionCR>(firstGlobal);
+							item.endPosition = static_cast<Sci_PositionCR>(lastGlobalEnd);
+							// allocate and copy display text
+							item.text = new char[display.size() + 1];
+							memcpy(item.text, display.data(), display.size());
+							item.text[display.size()] = '\0';
+						}
+					} else {
+						// No capture groups: use whole match
+						item.startPosition = static_cast<Sci_PositionCR>(globalPos);
+						item.endPosition = static_cast<Sci_PositionCR>(globalPos + lenm);
+						// allocate and copy matched text
+						item.text = new char[lenm + 1];
+						memcpy(item.text, docText.data() + globalPos, lenm);
+						item.text[lenm] = '\0';
+					}
+
+					todos.push_back(item);
+				}
+
+				if (newlinePos == std::string::npos)
+					break;
+				docPos = newlinePos + 1;
+			}
+		}
+		catch (const std::regex_error &) {
+			// invalid regex: skip this keyword
+			continue;
 		}
 	}
 	//display all todo's
@@ -275,6 +339,14 @@ void displayDialog()
 void displayAboutDialog()
 {
 	_aboutDlg.doDialog();
+}
+
+// Open configuration file inside the current Notepad++ instance
+void editConfigFile()
+{
+	// Path must be a wide string. Use the same relative path as in config.cpp
+	const wchar_t *configPath = L"./plugins/NppTaskList/config/npp_task_list.cfg";
+	::SendMessage(nppData._nppHandle, NPPM_DOOPEN, 0, (LPARAM)configPath);
 }
 
 
