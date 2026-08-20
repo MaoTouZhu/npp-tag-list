@@ -301,10 +301,14 @@ VOID CALLBACK MyTimerProc(
 		}
 	}
 	//display all todo's
+	// Ensure todos are in document order (by startPosition) so UI lists follow file order
+	todos.sort([](const TodoItem &a, const TodoItem &b) {
+		return a.startPosition < b.startPosition;
+	});
 	if (_taskList.itemsFingerprint(todos) != _taskList.todoItemsFingerprint) {
 		_taskList.SetList(todos);
 	}
-	
+
 	//cleanup list
 	for (const auto &it : todos)
 	{
